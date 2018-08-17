@@ -1,11 +1,14 @@
 class ClubsController < ApplicationController
+  before_action :require_login, except: [:index]
+  before_action :load_club, only: [:show, :edit, :update]
+  before_action :require_ownership, only: [:edit, :update]
+  before_action :require_role, only: [:show]
 
   def index
     @clubs = Club.all
   end
 
   def show
-    @club = Club.find(params[:id])
   end
 
   def new
@@ -28,12 +31,9 @@ class ClubsController < ApplicationController
   end
 
   def edit
-    @club = Club.find(params[:id])
   end
 
   def update
-    @club = Club.find(params[:id])
-
     if @club && @club.update(name: params[:club][:name], description: params[:club][:description], user: current_user)
       redirect_to root_path
     else
@@ -42,4 +42,30 @@ class ClubsController < ApplicationController
     end
   end
 
+  private
+
+  def require_login
+    if !current_user
+      flash[:alert] = ["You must be logged in to do this."]
+      redirect_to new_session_path
+    end
+  end
+
+  def require_ownership
+    if current_user != @club.user
+      flash[:alert] = ["You're not the owner of this club, access denied!"]
+      redirect_to root_path
+    end
+  end
+
+  def load_club
+    @club = Club.find(params[:id])
+  end
+
+  def require_role
+    if Club.banned_roles.include?(current_user.role)
+      flash[:alert] = ["Only wizards and hobbits may enter!"]
+      redirect_to root_path
+    end
+  end
 end
